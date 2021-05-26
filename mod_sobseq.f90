@@ -3,108 +3,260 @@
 !> Note that this uses the gray code implementation, so
 !> Generated numbers are shuffled compared to the original series.
 module mod_sobseq
-  implicit none
-  private
 
-  integer, parameter :: N_M = 31 ! Generate at most 2^31 points
-  ! Problems with sign bit when generating N_M = 32
-
-  !> Type containing the state of a sobol sequence
-  type, public :: sobol_state
+    use iso_fortran_env
+    
+    implicit none
+    
     private
-      integer :: v(N_M)   !< Direction numbers
-      integer :: i = 1    !< Current number
-      integer :: x = 0    !< Current value
-      integer :: stride=0 !< Skip 2^this many values when generating
-  contains
-      procedure, public :: initialize !< Initialize direction numbers
-      procedure, public :: skip_ahead !< Skip ahead to a specific position and return this value
-      procedure, public :: next         !< Generate the next value in the sequence
-      procedure, public :: next_strided !< Generate the next value in the sequence (strided version)
-  end type sobol_state
+    
+    integer, parameter :: wp = real32
+    integer, parameter :: N_M = 31 ! Generate at most 2^31 points
+    ! Problems with sign bit when generating N_M = 32
+    
+    !> Type containing the state of a sobol sequence
+    type, public :: sobol_state
+      private
+        integer :: v(N_M)   !< Direction numbers
+        integer :: i = 1    !< Current number
+        integer :: x = 0    !< Current value
+        integer :: stride=0 !< Skip 2^this many values when generating
+    contains
+        procedure, public :: skip_ahead !< Skip ahead to a specific position and return this value
+        procedure, public :: next         !< Generate the next value in the sequence
+        procedure, public :: next_strided !< Generate the next value in the sequence (strided version)
+        procedure, public :: populate !< Populate an array of any size with random sobol numbers.
+    end type sobol_state
+    
+    interface sobol_state
+        module procedure :: initialize !< Initialize direction numbers
+    end interface sobol_state
+
+    type, public :: multi_dim_sobol_state
+        private
+        type(sobol_state), allocatable, dimension(:) :: states
+        integer :: n_dim
+    contains
+        procedure, public :: md_skip_ahead
+        procedure, public :: md_next
+        procedure, public :: md_next_strided
+        procedure, public :: md_populate
+    end type multi_dim_sobol_state
+    
+    interface multi_dim_sobol_state
+        module procedure :: md_initialize 
+        module procedure :: md_initialize_default 
+    end interface multi_dim_sobol_state
+
 contains
 
+! Single Dimension
 
 !> Initialize the direction numbers using a primitive polynomial
-subroutine initialize(state, s, a, m_in, stride)
-  implicit none
-  class (sobol_state), intent(inout) :: state
-  integer, intent(in) :: s !< Number of direction numbers / Mathematical polynomial basis of degree s
-  integer, intent(in) :: a !< Coefficients of primitive polynomial
-  integer, intent(in), dimension(s) :: m_in !< First direction numbers
-  integer, intent(in), optional :: stride
-
-  integer, dimension(N_M) :: m
-  integer :: k, i, tmp
-
-  m(1:s) = m_in
-
-  do k=s+1, N_M
-    tmp=ieor(2**s * m(k-s), m(k-s))
-    do i=1,s-1
-      tmp = ieor(m(k-i) * 2**i * ai(a, s-i), &
-                 tmp)
+function initialize(s, a, m_in, stride) result(new_ss)
+    integer, intent(in) :: s !< Number of direction numbers / Mathematical polynomial basis of degree s
+    integer, intent(in) :: a !< Coefficients of primitive polynomial
+    integer, intent(in), dimension(s) :: m_in !< First direction numbers
+    integer, intent(in), optional :: stride
+    type(sobol_state) :: new_ss
+    
+    integer, dimension(N_M) :: m
+    integer :: k, i, tmp
+    
+    m(1:s) = m_in
+    
+    do k=s+1, N_M
+      tmp=ieor(2**s * m(k-s), m(k-s))
+      do i=1,s-1
+        tmp = ieor(m(k-i) * 2**i * ai(a, s-i), &
+                   tmp)
+      end do
+      m(k) = tmp
     end do
-    m(k) = tmp
-  end do
+    
+    do k=1, N_M
+      new_ss%v(k) = (2**(N_M-k))*m(k)
+    end do
+    
+    new_ss%x = 0
+    new_ss%i = 0
+    new_ss%stride = 0
+    if (present(stride)) new_ss%stride = stride
 
-  do k=1, N_M
-    state%v(k) = (2**(N_M-k))*m(k)
-  end do
-
-  state%x = 0
-  state%i = 0
-  state%stride = 0
-  if (present(stride)) state%stride = stride
-end subroutine initialize
+end function initialize
 
 
 !> Generate a value at a specific position i
-function skip_ahead(state, i) result(output)
-  implicit none
-  class (sobol_state), intent(inout) :: state
+function skip_ahead(self, i) result(output)
+  class (sobol_state), intent(inout) :: self
   integer, intent(in) :: i
-  real    :: output
+
+  real(kind=wp) :: output
   integer :: g ! Gray code representation of i
   integer :: j, tmp
   
   g = ieor(i,i/2)
-  state%x = 0
-  state%i = i
+  self%x = 0
+  self%i = i
   
-  tmp = ai(g,1) * state%v(1)
+  tmp = ai(g,1) * self%v(1)
   do j=2, N_M
-    tmp = ieor(tmp,ai(g,j) * state%v(j))
+    tmp = ieor(tmp,ai(g,j) * self%v(j))
   end do
-  output = real(tmp) * 2.d0**(-N_M)
-  state%x = tmp
+  output = real(tmp, kind=wp) * 2.0_wp**(-N_M)
+  self%x = tmp
   
 end function skip_ahead
 
 
 !> Generate the next value in a series
-!> And update the state function
-function next(state)
-  implicit none
-  class (sobol_state), intent(inout) :: state
-  real :: next
-  state%x = ieor(state%x, state%v(i4_bit_lo0(state%i)))
-  state%i = state%i + 1
-  next = real(state%x) * 2.d0**(-N_M)
+!> And update the self function
+function next(self)
+
+  class (sobol_state), intent(inout) :: self
+
+  real(kind=wp) :: next
+
+  self%x = ieor(self%x, self%v(i4_bit_lo0(self%i)))
+  self%i = self%i + 1
+  next = real(self%x, kind=wp) * 2.0_wp**(-N_M)
+
 end function next
 
 !> Generate the next value in a series
-!> And update the state function
-function next_strided(state)
-  implicit none
-  class (sobol_state), intent(inout) :: state
-  real :: next_strided
-  state%x = ieor(state%x, ieor(state%v(state%stride), state%v(&
-            i4_bit_lo0(ior(state%i, 2**state%stride - 1)))))
-  state%i = state%i + 2**state%stride
-  next_strided = real(state%x) * 2.d0**(-N_M)
+!> And update the self function
+function next_strided(self)
+  class (sobol_state), intent(inout) :: self
+
+  real(kind=wp) :: next_strided
+
+  self%x = ieor(self%x, ieor(self%v(self%stride), self%v(&
+            i4_bit_lo0(ior(self%i, 2**self%stride - 1)))))
+  self%i = self%i + 2**self%stride
+  next_strided = real(self%x, kind=wp) * 2.0_wp**(-N_M)
 end function next_strided
 
+subroutine populate(self, arr)
+    class (sobol_state), intent(inout) :: self
+    real(kind=wp), dimension(:), intent(out) :: arr
+    
+    integer :: i
+
+    do i=1, size(arr)
+        arr(i) = self%next() 
+    end do
+end subroutine populate
+
+! Multiple Dimension
+
+!> Initialize the direction numbers using a primitive polynomial
+function md_initialize(n_dim, s, a, m_in, stride) result(new_mdss)
+    integer, intent(in) :: n_dim
+    integer, dimension(:), intent(in) :: s !< Number of direction numbers / Mathematical polynomial basis of degree s
+    integer, dimension(:), intent(in) :: a !< Coefficients of primitive polynomial
+    integer, dimension(:,:), intent(in) :: m_in !< First direction numbers
+    integer, dimension(:), intent(in), optional :: stride
+    type(multi_dim_sobol_state) :: new_mdss
+
+    integer :: i
+
+    if ((size(s) < n_dim).or.(size(a) < n_dim).or.(size(m_in, 2) < n_dim)) error stop
+   
+    do i=1, n_dim
+        if (present(stride)) new_mdss%states(i)%stride = stride(i)
+        new_mdss%states(i) = sobol_state(s(i), a(i), m_in(:,i))
+    end do
+
+end function md_initialize
+
+function md_initialize_default(n_dim, stride) result(new_mdss)
+    integer, intent(in) :: n_dim
+    integer, dimension(:), intent(in), optional :: stride
+    type(multi_dim_sobol_state) :: new_mdss
+
+    integer, parameter, dimension(1:12) :: s &
+        = (/1,2,3,3,4,4,5,5,5,5,5,5/)
+    integer, parameter, dimension(1:12) :: a &
+        = (/0,1,1,2,1,4,2,4,7,11,13,14/)
+    integer, parameter, dimension(5,1:12) :: m &
+        = reshape([1,0,0,0,0,     &
+                   1,3,0,0,0,     &
+                   1,3,1,0,0,     &
+                   1,1,1,0,0,     &
+                   1,1,3,3,0,     &
+                   1,3,5,13,0,    &
+                   1,1,5,5,17,    &
+                   1,1,5,5,5,     &
+                   1,1,7,11,19,   &
+                   1,1,5,1,1,     &
+                   1,1,1,3,11,    &
+                   1,3,5,5,31],   [5,12])
+    
+    if (n_dim > 12) error stop
+
+    new_mdss = md_initialize(n_dim, s, a, m, stride)
+
+end function md_initialize_default
+
+!> Generate a value at a specific position i
+function md_skip_ahead(self, i) result(output)
+  class (multi_dim_sobol_state), intent(inout) :: self
+  integer, intent(in) :: i
+
+  real(kind=wp), dimension(self%n_dim) :: output
+
+  integer :: j
+
+  do j=1, self%n_dim
+      output(j) = self%states(j)%skip_ahead(i)
+  end do
+  
+end function md_skip_ahead
+
+
+!> Generate the next value in a series
+!> And update the state function
+function md_next(self)
+  class (multi_dim_sobol_state), intent(inout) :: self
+
+  real(kind=wp), dimension(self%n_dim) :: md_next
+
+  integer :: i
+
+  do i=1, self%n_dim
+      md_next(i) = self%states(i)%next()
+  end do
+
+end function md_next
+
+!> Generate the next value in a series
+!> And update the state function
+function md_next_strided(self)
+  class (multi_dim_sobol_state), intent(inout) :: self
+
+  real(kind=wp), dimension(self%n_dim) :: md_next_strided
+
+  integer :: i
+
+  do i=1, self%n_dim
+      md_next_strided(i) = self%states(i)%next_strided()
+  end do
+end function md_next_strided
+
+subroutine md_populate(self, arr)
+    class (multi_dim_sobol_state), intent(inout) :: self
+    real(kind=wp), dimension(:,:), intent(out) :: arr
+    
+    integer :: i
+
+    if (size(arr, 2) /= self%n_dim) error stop
+
+    do i=1, size(arr)
+        arr(i, :) = self%md_next() 
+    end do
+end subroutine md_populate
+
+! Private Functions
 
 !> Returns the value of the bit at position i (1-based index)
 function ai(a,i)
@@ -130,4 +282,27 @@ function i4_bit_lo0(num)
     if (.not. btest(num,i4_bit_lo0-1)) return
   enddo
 end function i4_bit_lo0
+
 end module mod_sobseq
+
+program test
+
+    use mod_sobseq 
+
+    type(sobol_state) :: rng
+
+    integer, parameter :: s=1, a=0, m(1) = (/1/)
+    integer, parameter :: N_samples = 10
+
+    real, dimension(:), allocatable :: tmp
+
+    allocate(tmp(N_samples))
+    rng = sobol_state(s,a,m)
+
+    call rng%populate(tmp)
+
+    print *, tmp
+
+    deallocate(tmp)
+
+end program test
