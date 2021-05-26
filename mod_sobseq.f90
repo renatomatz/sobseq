@@ -161,10 +161,14 @@ function md_initialize(n_dim, s, a, m_in, stride) result(new_mdss)
     integer :: i
 
     if ((size(s) < n_dim).or.(size(a) < n_dim).or.(size(m_in, 2) < n_dim)) error stop
+
+    new_mdss%n_dim = n_dim
+
+    allocate(new_mdss%states(n_dim))
    
     do i=1, n_dim
-        if (present(stride)) new_mdss%states(i)%stride = stride(i)
         new_mdss%states(i) = sobol_state(s(i), a(i), m_in(:,i))
+        if (present(stride)) new_mdss%states(i)%stride = stride(i)
     end do
 
 end function md_initialize
@@ -226,7 +230,6 @@ function md_next(self)
   do i=1, self%n_dim
       md_next(i) = self%states(i)%next()
   end do
-
 end function md_next
 
 !> Generate the next value in a series
@@ -243,16 +246,16 @@ function md_next_strided(self)
   end do
 end function md_next_strided
 
-subroutine md_populate(self, arr)
+subroutine md_populate(self, mat)
     class (multi_dim_sobol_state), intent(inout) :: self
-    real(kind=wp), dimension(:,:), intent(out) :: arr
+    real(kind=wp), dimension(:,:), intent(out) :: mat
     
     integer :: i
 
-    if (size(arr, 2) /= self%n_dim) error stop
+    if (size(mat, 2) /= self%n_dim) error stop
 
-    do i=1, size(arr)
-        arr(i, :) = self%md_next() 
+    do i=1, size(mat, 1)
+        mat(i, :) = self%md_next() 
     end do
 end subroutine md_populate
 
@@ -290,19 +293,26 @@ program test
     use mod_sobseq 
 
     type(sobol_state) :: rng
+    type(multi_dim_sobol_state) :: rng2
 
     integer, parameter :: s=1, a=0, m(1) = (/1/)
     integer, parameter :: N_samples = 10
 
     real, dimension(:), allocatable :: tmp
+    real, dimension(:,:), allocatable :: tmp2
 
-    allocate(tmp(N_samples))
     rng = sobol_state(s,a,m)
 
+    allocate(tmp(N_samples))
     call rng%populate(tmp)
 
-    print *, tmp
+    rng2 = multi_dim_sobol_state(2)
+    
+    allocate(tmp2(8, 2))
+    call rng2%md_populate(tmp2)
 
-    deallocate(tmp)
+    print '(2F6.3)', transpose(tmp2)
+
+    deallocate(tmp, tmp2)
 
 end program test
