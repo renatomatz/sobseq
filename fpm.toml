@@ -1,0 +1,35 @@
+name = "sobseq"
+version = "0.1.0"
+license = "MIT"
+author = "Daan van Vugt, Koen Beljaars, Renato Zimmermann"
+maintainer = "daanvanvugt@gmail.com, k.p.beljaars@tue.nl, renato.zimmermann@mail.utoronto.ca"
+copyright = "Copyright 2016 Daan van Vugt, Koen Beljaars, 2021 Renato Zimmermann" 
+
+[build]
+auto-executables = true
+auto-tests = true
+auto-examples = true
+
+[install]
+library = false
+
+[[test]]
+name="basic_tests"
+source-dir="test"
+main="basic_tests.f90"
+
+[test.dependencies]
+cafut = { git = "https://github.com/renatomatz/cafut.git" }
+
+[[test]]
+name="timing_tests"
+source-dir="test"
+main="timing_tests.f90"
+
+[[test]]
+name="visual_tests"
+source-dir="test"
+main="visual_tests.f90"
+
+[test.dependencies]
+ogpf = { git = "https://github.com/kookma/ogpf.git" }

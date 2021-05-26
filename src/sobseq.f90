@@ -2,7 +2,7 @@
 !> Sobol series generators with strided and skip-ahead generation.
 !> Note that this uses the gray code implementation, so
 !> Generated numbers are shuffled compared to the original series.
-module mod_sobseq
+module sobseq
 
     use iso_fortran_env
     
@@ -10,7 +10,7 @@ module mod_sobseq
     
     private
     
-    integer, parameter :: wp = real32
+    integer, parameter :: wp = real64
     integer, parameter :: N_M = 31 ! Generate at most 2^31 points
     ! Problems with sign bit when generating N_M = 32
     
@@ -111,29 +111,29 @@ end function skip_ahead
 
 !> Generate the next value in a series
 !> And update the self function
-function next(self)
+function next(self) result(next_elem)
 
   class (sobol_state), intent(inout) :: self
 
-  real(kind=wp) :: next
+  real(kind=wp) :: next_elem
 
   self%x = ieor(self%x, self%v(i4_bit_lo0(self%i)))
   self%i = self%i + 1
-  next = real(self%x, kind=wp) * 2.0_wp**(-N_M)
+  next_elem = real(self%x, kind=wp) * 2.0_wp**(-N_M)
 
 end function next
 
 !> Generate the next value in a series
 !> And update the self function
-function next_strided(self)
+function next_strided(self) result(next_elem)
   class (sobol_state), intent(inout) :: self
 
-  real(kind=wp) :: next_strided
+  real(kind=wp) :: next_elem
 
   self%x = ieor(self%x, ieor(self%v(self%stride), self%v(&
             i4_bit_lo0(ior(self%i, 2**self%stride - 1)))))
   self%i = self%i + 2**self%stride
-  next_strided = real(self%x, kind=wp) * 2.0_wp**(-N_M)
+  next_elem = real(self%x, kind=wp) * 2.0_wp**(-N_M)
 end function next_strided
 
 subroutine populate(self, arr)
@@ -220,29 +220,29 @@ end function md_skip_ahead
 
 !> Generate the next value in a series
 !> And update the state function
-function md_next(self)
+function md_next(self) result(next_elem)
   class (multi_dim_sobol_state), intent(inout) :: self
 
-  real(kind=wp), dimension(self%n_dim) :: md_next
+  real(kind=wp), dimension(self%n_dim) :: next_elem
 
   integer :: i
 
   do i=1, self%n_dim
-      md_next(i) = self%states(i)%next()
+      next_elem(i) = self%states(i)%next()
   end do
 end function md_next
 
 !> Generate the next value in a series
 !> And update the state function
-function md_next_strided(self)
+function md_next_strided(self) result(next_elem)
   class (multi_dim_sobol_state), intent(inout) :: self
 
-  real(kind=wp), dimension(self%n_dim) :: md_next_strided
+  real(kind=wp), dimension(self%n_dim) :: next_elem
 
   integer :: i
 
   do i=1, self%n_dim
-      md_next_strided(i) = self%states(i)%next_strided()
+      next_elem(i) = self%states(i)%next_strided()
   end do
 end function md_next_strided
 
@@ -283,36 +283,7 @@ function i4_bit_lo0(num)
 
   do i4_bit_lo0=1,bit_size(num)
     if (.not. btest(num,i4_bit_lo0-1)) return
-  enddo
+  end do
 end function i4_bit_lo0
 
-end module mod_sobseq
-
-program test
-
-    use mod_sobseq 
-
-    type(sobol_state) :: rng
-    type(multi_dim_sobol_state) :: rng2
-
-    integer, parameter :: s=1, a=0, m(1) = (/1/)
-    integer, parameter :: N_samples = 10
-
-    real, dimension(:), allocatable :: tmp
-    real, dimension(:,:), allocatable :: tmp2
-
-    rng = sobol_state(s,a,m)
-
-    allocate(tmp(N_samples))
-    call rng%populate(tmp)
-
-    rng2 = multi_dim_sobol_state(2)
-    
-    allocate(tmp2(8, 2))
-    call rng2%md_populate(tmp2)
-
-    print '(2F6.3)', transpose(tmp2)
-
-    deallocate(tmp, tmp2)
-
-end program test
+end module sobseq
