@@ -22,4 +22,6 @@ program visual_tests
     call md_rng%md_populate(seq)
     call gp%plot(seq(:,1), seq(:,2:), "with points")
 
+    call execute_command_line("rm ogpf_temp_script.gp")
+
 end program visual_tests
