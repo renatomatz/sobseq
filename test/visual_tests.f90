@@ -19,7 +19,7 @@ program visual_tests
     call gp%xlabel("Dimension 1")
     call gp%ylabel("Dimension 2")
 
-    call md_rng%md_populate(seq)
+    call md_rng%populate(seq)
     call gp%plot(seq(:,1), seq(:,2:), "with points")
 
     call execute_command_line("rm ogpf_temp_script.gp")

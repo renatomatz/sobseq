@@ -96,7 +96,7 @@ program basic_tests
         
     md_rng = multi_dim_sobol_state(2)
     
-    call md_rng%md_populate(res2)
+    call md_rng%populate(res2)
 
     tgt2(:,1) = [0.5000000000,     &
                  0.2500000000,     & 

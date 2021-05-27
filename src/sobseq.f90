@@ -22,14 +22,14 @@ module sobseq
         integer :: x = 0    !< Current value
         integer :: stride=0 !< Skip 2^this many values when generating
     contains
-        procedure, public :: skip_ahead !< Skip ahead to a specific position and return this value
-        procedure, public :: next         !< Generate the next value in the sequence
-        procedure, public :: next_strided !< Generate the next value in the sequence (strided version)
-        procedure, public :: populate !< Populate an array of any size with random sobol numbers.
+        procedure, public :: skip_ahead => sd_skip_ahead  !< Skip ahead to a specific position and return this value
+        procedure, public :: next => sd_next        !< Generate the next value in the sequence
+        procedure, public :: next_strided => sd_next_strided!< Generate the next value in the sequence (strided version)
+        procedure, public :: populate => sd_populate    !< Populate an array of any size with random sobol numbers.
     end type sobol_state
     
     interface sobol_state
-        module procedure :: initialize !< Initialize direction numbers
+        module procedure :: sd_initialize !< Initialize direction numbers
     end interface sobol_state
 
     type, public :: multi_dim_sobol_state
@@ -37,10 +37,10 @@ module sobseq
         type(sobol_state), allocatable, dimension(:) :: states
         integer :: n_dim
     contains
-        procedure, public :: md_skip_ahead
-        procedure, public :: md_next
-        procedure, public :: md_next_strided
-        procedure, public :: md_populate
+        procedure, public :: skip_ahead => md_skip_ahead
+        procedure, public :: next => md_next
+        procedure, public :: next_strided => md_next_strided
+        procedure, public :: populate => md_populate    
     end type multi_dim_sobol_state
     
     interface multi_dim_sobol_state
@@ -53,7 +53,7 @@ contains
 ! Single Dimension
 
 !> Initialize the direction numbers using a primitive polynomial
-function initialize(s, a, m_in, stride) result(new_ss)
+function sd_initialize(s, a, m_in, stride) result(new_ss)
     integer, intent(in) :: s !< Number of direction numbers / Mathematical polynomial basis of degree s
     integer, intent(in) :: a !< Coefficients of primitive polynomial
     integer, intent(in), dimension(s) :: m_in !< First direction numbers
@@ -83,11 +83,11 @@ function initialize(s, a, m_in, stride) result(new_ss)
     new_ss%stride = 0
     if (present(stride)) new_ss%stride = stride
 
-end function initialize
+end function sd_initialize
 
 
 !> Generate a value at a specific position i
-function skip_ahead(self, i) result(output)
+function sd_skip_ahead(self, i) result(output)
   class (sobol_state), intent(inout) :: self
   integer, intent(in) :: i
 
@@ -106,12 +106,12 @@ function skip_ahead(self, i) result(output)
   output = real(tmp, kind=wp) * 2.0_wp**(-N_M)
   self%x = tmp
   
-end function skip_ahead
+end function sd_skip_ahead
 
 
 !> Generate the next value in a series
 !> And update the self function
-function next(self) result(next_elem)
+function sd_next(self) result(next_elem)
 
   class (sobol_state), intent(inout) :: self
 
@@ -121,11 +121,11 @@ function next(self) result(next_elem)
   self%i = self%i + 1
   next_elem = real(self%x, kind=wp) * 2.0_wp**(-N_M)
 
-end function next
+end function sd_next
 
 !> Generate the next value in a series
 !> And update the self function
-function next_strided(self) result(next_elem)
+function sd_next_strided(self) result(next_elem)
   class (sobol_state), intent(inout) :: self
 
   real(kind=wp) :: next_elem
@@ -134,9 +134,9 @@ function next_strided(self) result(next_elem)
             i4_bit_lo0(ior(self%i, 2**self%stride - 1)))))
   self%i = self%i + 2**self%stride
   next_elem = real(self%x, kind=wp) * 2.0_wp**(-N_M)
-end function next_strided
+end function sd_next_strided
 
-subroutine populate(self, arr)
+subroutine sd_populate(self, arr)
     class (sobol_state), intent(inout) :: self
     real(kind=wp), dimension(:), intent(out) :: arr
     
@@ -145,7 +145,7 @@ subroutine populate(self, arr)
     do i=1, size(arr)
         arr(i) = self%next() 
     end do
-end subroutine populate
+end subroutine sd_populate
 
 ! Multiple Dimension
 
@@ -255,7 +255,7 @@ subroutine md_populate(self, mat)
     if (size(mat, 2) /= self%n_dim) error stop
 
     do i=1, size(mat, 1)
-        mat(i, :) = self%md_next() 
+        mat(i, :) = self%next() 
     end do
 end subroutine md_populate
 
