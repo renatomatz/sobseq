@@ -12,10 +12,10 @@ program visual_tests
     real(real64), dimension(:,:), allocatable :: seq
 
     allocate(seq(N_samples, 4))
-        
+
     md_rng = multi_dim_sobol_state(4)
 
-    call gp%title("Sobol Sequence Visualization") 
+    call gp%title("Sobol Sequence Visualization")
     call gp%xlabel("Dimension 1")
     call gp%ylabel("Dimension 2")
 

@@ -3,7 +3,7 @@ version = "0.1.0"
 license = "MIT"
 author = "Daan van Vugt, Koen Beljaars, Renato Zimmermann"
 maintainer = "daanvanvugt@gmail.com, k.p.beljaars@tue.nl, renato.zimmermann@mail.utoronto.ca"
-copyright = "Copyright 2016 Daan van Vugt, Koen Beljaars, 2021 Renato Zimmermann" 
+copyright = "Copyright 2021 Daan van Vugt, Koen Beljaars, 2021 Renato Zimmermann"
 
 [build]
 auto-executables = true
@@ -12,6 +12,11 @@ auto-examples = true
 
 [install]
 library = false
+
+[[test]]
+name="import_test"
+source-dir="test"
+main="import_test.f90"
 
 [[test]]
 name="basic_tests"
