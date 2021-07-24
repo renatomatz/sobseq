@@ -8,7 +8,7 @@ This repository contains a module, `sobseq.f90`, which can be used to generate p
 
 ## Setup using the Fortran Package Manager (fpm)
 
-To use sobseq for testing in your [fpm](https://github.com/fortran-lang/fpm) project without making it a build dependency, just add the following to your package manifest file (`fpm.toml`): 
+To use sobseq for testing in your [fpm](https://github.com/fortran-lang/fpm) project without making it a build dependency, just add the following to your package manifest file (`fpm.toml`):
 
 ```toml
 [dependencies]
@@ -26,18 +26,20 @@ The direction numbers for the first eight are reproduced here, and more can be f
 ```fortran
 integer, parameter, dimension(1:12)   :: s = (/1,2,3,3,4,4,5,5,5,5,5,5/)
 integer, parameter, dimension(1:12)   :: a = (/0,1,1,2,1,4,2,4,7,11,13,14/)
-integer, parameter, dimension(5,1:12) :: m = reshape((/1,0,0,0,0, &
-					1,3,0,0,0, &
-					1,3,1,0,0, &
-					1,1,1,0,0, &
-					1,1,3,3,0, &
-					1,3,5,13,0,&
-					1,1,5,5,17,&
-					1,1,5,5,5,&
-					1,1,7,11,19,&
-					1,1,5,1,1,&
-					1,1,1,3,11,&
-					1,3,5,5,31/), (/5,12/))
+integer, parameter, dimension(12,5) :: m = &
+    transpose(reshape( &
+        [1, 0, 0, 0,  0,  &
+         1, 3, 0, 0,  0,  &
+         1, 3, 1, 0,  0,  &
+         1, 1, 1, 0,  0,  &
+         1, 1, 3, 3,  0,  &
+         1, 3, 5, 13, 0,  &
+         1, 1, 5, 5,  17, &
+         1, 1, 5, 5,  5,  &
+         1, 1, 7, 11, 19, &
+         1, 1, 5, 1,  1,  &
+         1, 1, 1, 3,  11, &
+         1, 3, 5, 5,  31], [12,5])
 ```
 
 The following code snippet contains a small example.

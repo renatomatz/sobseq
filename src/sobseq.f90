@@ -227,6 +227,7 @@ function md_initialize(n_dim, s, a, m_in, stride) result(new_mdss)
     integer, dimension(:), intent(in), optional :: stride
     type(multi_dim_sobol_state) :: new_mdss
 
+    integer, allocatable, dimension(:) :: m_row
     integer :: i
 
     if ((size(s) < n_dim).or.(size(a) < n_dim).or.(size(m_in, 1) < n_dim)) error stop
@@ -234,9 +235,12 @@ function md_initialize(n_dim, s, a, m_in, stride) result(new_mdss)
     new_mdss%n_dim = n_dim
 
     allocate(new_mdss%states(n_dim))
+    allocate(m_row(s(size(s))))
 
     do i=1, n_dim
-        new_mdss%states(i) = sobol_state(s(i), a(i), m_in(i,:s(i)))
+        ! this fixes runtime warning (temprary array)
+        m_row = m_in(i,1:s(i))
+        new_mdss%states(i) = sobol_state(s(i), a(i), m_row)
         if (present(stride)) new_mdss%states(i)%stride = stride(i)
     end do
 
