@@ -113,6 +113,7 @@ module sobseq
     interface multi_dim_sobol_state
         module procedure :: md_initialize
         module procedure :: md_initialize_default
+        module procedure :: md_initialize_from_file
     end interface multi_dim_sobol_state
 
 contains
