@@ -200,10 +200,17 @@ function sd_next_strided(self) result(next_elem)
 
   real(kind=wp) :: next_elem
 
-  self%x = ieor(self%x, ieor(self%v(self%stride), self%v(&
-            i4_bit_lo0(ior(self%i, 2**self%stride - 1)))))
-  self%i = self%i + 2**self%stride
-  next_elem = real(self%x, kind=wp) * 2.0_wp**(-N_M)
+  if (self%stride == 0) then
+      next_elem = self%next()
+  else
+      self%x = ieor( &
+          self%x, &
+          ieor(self%v(self%stride), &
+               self%v(i4_bit_lo0(ior(self%i, 2**self%stride - 1)))) &
+      )
+      self%i = self%i + 2**self%stride
+      next_elem = real(self%x, kind=wp) * 2.0_wp**(-N_M)
+  end if
 end function sd_next_strided
 
 subroutine sd_populate(self, arr)
