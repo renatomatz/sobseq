@@ -4,30 +4,45 @@ program stride_tests
     use sobseq
     use ogpf
 
+    integer, parameter :: N_sobol = 3
     integer, parameter :: N_samples = 1024
 
-    type(multi_dim_sobol_state) :: md_rng1
-    type(multi_dim_sobol_state) :: md_rng2
+    type(multi_dim_sobol_state), dimension(N_sobol) :: md_rng
     type(gpf) :: gp
 
     real(real64), dimension(:,:), allocatable :: seq
     real(real64), dimension(:), allocatable :: trash
 
-    integer :: i
+    integer :: temp, stride
+    integer :: i, j
+    logical :: is_pow_2
+
+    temp = N_sobol
+    stride = 0
+    is_pow_2 = .true.
+    do
+        is_pow_2 = is_pow_2.and.(mod(temp,2)==0)
+        temp = ishft(temp,-1)
+        stride = stride + 1
+        if (temp == 1) exit
+    end do
+    if (.not.is_pow_2) stride = stride + 1
 
     allocate(seq(N_samples, 4))
 
-    md_rng1 = multi_dim_sobol_state(4, 3)
-    md_rng2 = multi_dim_sobol_state(4, 3)
-    trash = md_rng2%skip_ahead(1)
+    do i=1,N_sobol
+        md_rng(i) = multi_dim_sobol_state(4, stride)
+        trash = md_rng(i)%skip_ahead(i-1)
+    end do
 
     call gp%title("Sobol Sequence Visualization")
     call gp%xlabel("Dimension 1")
     call gp%ylabel("Dimension 2")
 
-    do i=2,N_samples,2
-        seq(i-1,:) = md_rng1%next_strided()
-        seq(i,:)   = md_rng2%next_strided()
+    do i=N_sobol,N_samples,N_sobol
+        do j=1,N_sobol
+            seq(i-(j-1),:) = md_rng(j)%next_strided()
+        end do
     end do
 
     call gp%plot(seq(:,1), seq(:,2:), "with points")
