@@ -225,7 +225,7 @@ function md_initialize(n_dim, s, a, m_in, stride) result(new_mdss)
     integer, dimension(:), intent(in) :: s !< Number of direction numbers / Mathematical polynomial basis of degree s
     integer, dimension(:), intent(in) :: a !< Coefficients of primitive polynomial
     integer, dimension(:,:), intent(in) :: m_in !< First direction numbers
-    integer, dimension(:), intent(in), optional :: stride
+    integer, intent(in), optional :: stride
     type(multi_dim_sobol_state) :: new_mdss
 
     integer, allocatable, dimension(:) :: m_row
@@ -241,15 +241,14 @@ function md_initialize(n_dim, s, a, m_in, stride) result(new_mdss)
     do i=1, n_dim
         ! this fixes runtime warning (temprary array)
         m_row = m_in(i,1:s(i))
-        new_mdss%states(i) = sobol_state(s(i), a(i), m_row)
-        if (present(stride)) new_mdss%states(i)%stride = stride(i)
+        new_mdss%states(i) = sobol_state(s(i), a(i), m_row, stride)
     end do
 
 end function md_initialize
 
 function md_initialize_default(n_dim, stride) result(new_mdss)
     integer, intent(in) :: n_dim
-    integer, dimension(:), optional, intent(in) :: stride
+    integer, optional, intent(in) :: stride
     type(multi_dim_sobol_state) :: new_mdss
 
     integer, dimension(n_dim) :: s
@@ -271,7 +270,7 @@ end function md_initialize_default
 function md_initialize_from_file(n_dim, file_name, stride) result(new_mdss)
     integer, intent(in) :: n_dim
     character(len=*), intent(in) :: file_name
-    integer, dimension(:), optional, intent(in) :: stride
+    integer, optional, intent(in) :: stride
     type(multi_dim_sobol_state) :: new_mdss
 
     integer, dimension(n_dim) :: s

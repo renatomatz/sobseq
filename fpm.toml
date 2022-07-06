@@ -41,5 +41,10 @@ name="visual_tests"
 source-dir="test"
 main="visual_tests.f90"
 
+[[test]]
+name="stride_tests"
+source-dir="test"
+main="stride_tests.f90"
+
 [test.dependencies]
 ogpf = { git = "https://github.com/kookma/ogpf.git" }
