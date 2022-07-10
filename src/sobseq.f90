@@ -88,6 +88,7 @@ module sobseq
         integer :: i = 1    !< Current number
         integer :: x = 0    !< Current value
         integer :: stride=0 !< Skip 2^this many values when generating
+        integer :: extra=0  !< Allow for non-power-of-two strides
     contains
         procedure, public :: skip_ahead => sd_skip_ahead  !< Skip ahead to a specific position and return this value
         procedure, public :: next => sd_next        !< Generate the next value in the sequence
@@ -129,7 +130,7 @@ function sd_initialize(s, a, m_in, stride) result(new_ss)
     type(sobol_state) :: new_ss
 
     integer, dimension(N_M) :: m
-    integer :: k, i, tmp
+    integer :: k, i, tmp, p2_stride
 
     if (size(m_in) /= s) error stop "m_in must be of size s"
 
@@ -151,7 +152,18 @@ function sd_initialize(s, a, m_in, stride) result(new_ss)
     new_ss%x = 0
     new_ss%i = 0
     new_ss%stride = 0
-    if (present(stride)) new_ss%stride = stride
+    if (present(stride)) then
+        tmp = stride
+        p2_stride = 0
+        do
+            tmp = ishft(tmp,-1)
+            if (tmp == 0) exit
+            p2_stride = p2_stride + 1
+        end do
+        new_ss%extra = stride - 2**p2_stride
+        new_ss%stride = p2_stride
+    end if
+
 
 end function sd_initialize
 
@@ -200,9 +212,15 @@ function sd_next_strided(self) result(next_elem)
 
   real(kind=wp) :: next_elem
 
+  real(kind=wp) :: trash
+  integer :: i
+
   if (self%stride == 0) then
       next_elem = self%next()
   else
+      do i=1,self%extra
+        trash = self%next()
+      end do
       self%x = ieor( &
           self%x, &
           ieor(self%v(self%stride), &
