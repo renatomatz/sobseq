@@ -101,6 +101,7 @@ module sobseq
     end interface sobol_state
 
     type, public :: multi_dim_sobol_state
+        private
         type(sobol_state), allocatable, dimension(:) :: states
         integer, public :: n_dim
     contains
