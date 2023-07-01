@@ -83,7 +83,7 @@ module sobseq
 
     !> Type containing the state of a sobol sequence
     type, public :: sobol_state
-      private
+        private
         integer :: v(N_M)   !< Direction numbers
         integer :: i = 1    !< Current number
         integer :: x = 0    !< Current value
@@ -101,9 +101,8 @@ module sobseq
     end interface sobol_state
 
     type, public :: multi_dim_sobol_state
-        private
         type(sobol_state), allocatable, dimension(:) :: states
-        integer :: n_dim
+        integer, public :: n_dim
     contains
         procedure, public :: skip_ahead => md_skip_ahead
         procedure, public :: next => md_next
